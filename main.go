@@ -65,10 +65,27 @@ func main() {
 		fmt.Println(m)
 	}
 
+	var brightness_arg string
+
+
 	for _, arg := range args {
-		br, err := strconv.Atoi(arg)
-		if err == nil { selected_brightness = br }
-		if arg == "max" { selected_brightness = max_brightness }
+		if arg != "-i" ||
+		arg != "-l" ||
+		arg != "-m" {
+			if !ArrayIncludes(interfaces, arg) {
+				brightness_arg = arg
+			}
+		}
+	}
+
+	if brightness_arg != "" {
+		brightness_arg = strings.ReplaceAll(brightness_arg, "max", strconv.Itoa(max_brightness))
+		if err := ArgMath(brightness_arg, &brightness_arg); err != nil {
+			panic(err)
+		}
+		selected_brightness, _ = strconv.Atoi(brightness_arg)
+	} else {
+		selected_brightness = 0
 	}
 
 	if selected_brightness > max_brightness {
@@ -84,6 +101,61 @@ func main() {
 		fmt.Println("Failed to set brightness. Are you root?")
 		return
 	}
+}
+
+func ArgMath(arg string, result *string) error {
+	b, op := ContainsMath(arg)
+	if !b {
+		return nil
+	}
+	var ops = []string{"-", "+", "*", "/"}
+	for _, operator := range ops {
+		if op == operator {
+			spl := strings.SplitN(arg, operator, 2)
+			var left, right string
+			var solved string
+
+			left = spl[0]
+			right = spl[1]
+
+			if c, _ := ContainsMath(spl[0]); c {
+				ArgMath(spl[0], &left)
+			}
+
+			if c, _ := ContainsMath(spl[1]); c {
+				ArgMath(spl[1], &right)
+			}
+
+
+			if err := DoMath(left, right, op, &solved); err != nil {
+				return err
+			}
+
+			*result = solved
+		}
+	}
+	return nil
+}
+
+func ContainsMath(str string) (bool, string) {
+	for _, op := range []string{"-", "+", "*", "/"} {
+		if strings.Contains(str, op) { return true, op }
+	}
+	return false, ""
+}
+
+func DoMath(str1, str2, operator string, result *string) error {
+	var parsed1, parsed2 int
+	var err error
+	parsed1, err = strconv.Atoi(str1)
+	if err != nil { return err }
+	parsed2, err = strconv.Atoi(str2)
+	if err != nil { return err }
+	if operator == "/" { *result = strconv.Itoa(parsed1/parsed2)  }
+	if operator == "*" { *result = strconv.Itoa(parsed1*parsed2)   }
+	if operator == "+" { *result = strconv.Itoa(parsed1+parsed2) }
+	if operator == "-" { *result = strconv.Itoa(parsed1-parsed2)   }
+	return nil
 }
 
 func FetchInterfaces(interfaces *[]string) error {
