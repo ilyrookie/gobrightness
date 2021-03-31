@@ -63,6 +63,7 @@ func main() {
 	if *max {
 		m := fmt.Sprintf("Max brightness for %s: %d", selected_interface, max_brightness)
 		fmt.Println(m)
+		return
 	}
 
 	var brightness_arg string
